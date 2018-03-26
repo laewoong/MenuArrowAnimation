@@ -7,7 +7,6 @@ import android.animation.ObjectAnimator;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PathMeasure;
@@ -30,11 +29,13 @@ public class MenuArrowAnimationButton extends AppCompatButton {
 
     private long mAnimationDuration;
 
-    private Path mToMenuPath;
-    private Path mToArrowPath;
-
+    private Path mSrcPath;
     private Path mCurPath;
+
     private Paint mPaint;
+
+    private AnimatorSet mToArrowAnimator;
+    private AnimatorSet mToMenuAnimator;
 
     private int mCanvasWidth;
     private int mCanvasHeight;
@@ -42,20 +43,17 @@ public class MenuArrowAnimationButton extends AppCompatButton {
     private boolean mIsAnimate;
     private boolean mIsArrowStatue;
 
-    private float mPhase;
-    private float TOTAL_PATH_LENGTH;
-
-    private float mCX;
-    private float mOffSet;
-
     private float mCurPathLength;
 
     private float MENU_UNDER_LENGTH;
     private float ARROW_LENGTH;
-    private float MENU_OVER_LENGTH;
 
-    private float START_MENU_BAR_VALUE;
-    private float END_MENU_BAR_VALUE;
+    private float MENU_UNDER_START_VALUE;
+    private float MENU_UNDER_END_VALUE;
+    private float MENU_OVER_START_VALUE;
+    private float MENU_OVER_END_VALUE;
+    private float ARROW_START_VALUE;
+    private float ARROW_END_VALUE;
 
     private static final float TENSION = 1.0f;
 
@@ -78,10 +76,8 @@ public class MenuArrowAnimationButton extends AppCompatButton {
 
     private void init() {
 
-        setBackground(null); // TODO: process when bg be declared in xml.
+        setBackground(null);
 
-        mToMenuPath = new Path();
-        mToArrowPath = new Path();
         mCurPath = new Path();
 
         mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -92,8 +88,6 @@ public class MenuArrowAnimationButton extends AppCompatButton {
         mIsAnimate = false;
         mIsArrowStatue = false;
 
-        mPhase = 0f;
-        TOTAL_PATH_LENGTH = 0f;
         mCurPathLength = 0f;
     }
 
@@ -106,6 +100,8 @@ public class MenuArrowAnimationButton extends AppCompatButton {
 
         makeMenuArrowPath();
         initPathStatue(mIsArrowStatue);
+        initToArrowAnimator();
+        initToMenuAnimator();
     }
 
     private void initPathStatue(boolean isArrowStatus) {
@@ -113,36 +109,22 @@ public class MenuArrowAnimationButton extends AppCompatButton {
         mIsArrowStatue = isArrowStatus;
 
         mCurPath.reset();
-        PathMeasure pm = new PathMeasure();
+        PathMeasure pm = new PathMeasure(mSrcPath, false);
 
-        if(isArrowStatus)
-        {
-            pm.setPath(mToMenuPath, false);
-
-            START_MENU_BAR_VALUE = TOTAL_PATH_LENGTH * 0.27f;
-            END_MENU_BAR_VALUE = START_MENU_BAR_VALUE + MENU_OVER_LENGTH;
-
-            float startD = pm.getLength() - ARROW_LENGTH;
-
-            float endD = startD + ARROW_LENGTH;
-
-            pm.getSegment(startD, endD, mCurPath,true);
+        if(isArrowStatus) {
+            pm.getSegment(ARROW_START_VALUE, ARROW_END_VALUE, mCurPath,true);
         }
         else {
 
-            pm.setPath(mToArrowPath, false);
-
-            START_MENU_BAR_VALUE = TOTAL_PATH_LENGTH * 0.242f;
-            END_MENU_BAR_VALUE = START_MENU_BAR_VALUE + MENU_OVER_LENGTH;
-
-            pm.getSegment(0f, MENU_UNDER_LENGTH, mCurPath,true);
-            pm.getSegment(START_MENU_BAR_VALUE, END_MENU_BAR_VALUE, mCurPath,true);
+            pm.getSegment(MENU_UNDER_START_VALUE, MENU_UNDER_END_VALUE, mCurPath,true);
+            pm.getSegment(MENU_OVER_START_VALUE, MENU_OVER_END_VALUE, mCurPath,true);
         }
     }
 
     private void makeMenuArrowPath() {
 
-        Path srcPath = new Path();
+        PathMeasure pathMeasure = new PathMeasure();
+        mSrcPath = new Path();
 
         final float LEFT_CIRCLE_DIAMETER  = ((float) mCanvasHeight)*(2f/3f);
         final float RIGHT_CIRCLE_DIAMETER = mCanvasHeight;
@@ -150,186 +132,55 @@ public class MenuArrowAnimationButton extends AppCompatButton {
         final float LEFT_CIRCLE_RADIUS    = LEFT_CIRCLE_DIAMETER/2f;
         final float RIGHT_CIRCLE_RADIUS   = RIGHT_CIRCLE_DIAMETER/2f;
 
-        mCX = LEFT_CIRCLE_DIAMETER + ((mCanvasWidth -LEFT_CIRCLE_DIAMETER-RIGHT_CIRCLE_DIAMETER)/2f);
-        mOffSet = mCX*0.2f;
+        final float MENU_BAR_OVER_LENGTH  = mCanvasWidth -LEFT_CIRCLE_RADIUS-RIGHT_CIRCLE_RADIUS;
 
-        srcPath.moveTo(mCX + mOffSet, LEFT_CIRCLE_DIAMETER);
+        float cX = LEFT_CIRCLE_RADIUS + (MENU_BAR_OVER_LENGTH/2f);
+        float offset = cX*0.2f;
+
         RectF leftRound = new RectF();
         leftRound.set(0, 0, LEFT_CIRCLE_DIAMETER, LEFT_CIRCLE_DIAMETER);
-        srcPath.arcTo(leftRound, 90, 180);
 
-        srcPath.lineTo(mCanvasWidth -RIGHT_CIRCLE_DIAMETER, 0);
+        RectF rightRound = new RectF();
+        rightRound.set(mCanvasWidth -RIGHT_CIRCLE_DIAMETER, 0, mCanvasWidth, mCanvasHeight);
 
-        leftRound.set(mCanvasWidth -RIGHT_CIRCLE_DIAMETER, 0, mCanvasWidth, mCanvasHeight);
-        srcPath.arcTo(leftRound, 270, 180);
+        MENU_UNDER_START_VALUE = offset;
+        MENU_UNDER_END_VALUE = MENU_UNDER_START_VALUE + (cX-LEFT_CIRCLE_RADIUS);
 
-        srcPath.lineTo(mCX, mCanvasHeight);
-        srcPath.lineTo(LEFT_CIRCLE_RADIUS, mCanvasHeight /2f);
-        srcPath.lineTo(mCX, -mOffSet);
+        mSrcPath.moveTo(cX + offset, LEFT_CIRCLE_DIAMETER);
 
-        PathMeasure pm = new PathMeasure(srcPath, false);
+        mSrcPath.arcTo(leftRound, 90, 180);
+        pathMeasure.setPath(mSrcPath, false);
+        MENU_OVER_START_VALUE = pathMeasure.getLength();
+        MENU_OVER_END_VALUE = MENU_OVER_START_VALUE + MENU_BAR_OVER_LENGTH;
+
+        mSrcPath.arcTo(rightRound, 270, 180);
+
+        mSrcPath.lineTo(cX, mCanvasHeight);
+        pathMeasure.setPath(mSrcPath, false);
+        ARROW_START_VALUE = pathMeasure.getLength();
+        mSrcPath.lineTo(LEFT_CIRCLE_RADIUS, mCanvasHeight /2f);
+        mSrcPath.lineTo(cX, -offset);
+        pathMeasure.setPath(mSrcPath, false);
+        ARROW_END_VALUE = pathMeasure.getLength() - offset;
+
+        PathMeasure pm = new PathMeasure(mSrcPath, false);
         final float pathLength = pm.getLength();
 
-        TOTAL_PATH_LENGTH   = pathLength - mOffSet;
-        MENU_OVER_LENGTH    = mCanvasWidth -(LEFT_CIRCLE_RADIUS + RIGHT_CIRCLE_RADIUS);
-        MENU_UNDER_LENGTH   = mCX - LEFT_CIRCLE_DIAMETER/2f;
-        ARROW_LENGTH        = TOTAL_PATH_LENGTH * 0.21f;
-
-        pm.getSegment(0, TOTAL_PATH_LENGTH, mToMenuPath, true);
-        pm.getSegment(mOffSet, pathLength, mToArrowPath, true);
+        MENU_UNDER_LENGTH   = cX - LEFT_CIRCLE_DIAMETER/2f;
+        ARROW_LENGTH        = ARROW_END_VALUE - ARROW_START_VALUE;
     }
 
-    @Override
-    protected void onDraw(Canvas canvas) {
-        super.onDraw(canvas);
+    private void initToArrowAnimator() {
 
-        Rect newRect = canvas.getClipBounds();
-        newRect.inset(-mCanvasWidth, -mCanvasHeight);  //make the rect larger
-        canvas.clipRect (newRect, Region.Op.REPLACE);
+        ObjectAnimator arrowAnimator = ObjectAnimator.ofFloat(this, "arrowPhase", MENU_UNDER_END_VALUE, ARROW_END_VALUE);
+        arrowAnimator.setInterpolator(new OvershootInterpolator(TENSION));
 
-        canvas.drawPath(mCurPath, mPaint);
-    }
+        ObjectAnimator pathLengthAnimator = ObjectAnimator.ofFloat(this, "pathLength", MENU_UNDER_LENGTH, ARROW_LENGTH);
 
-    public void setArrowPhase(float phase) {
-
-        mPhase = phase;
-
-        PathMeasure pm = new PathMeasure();
-        pm.setPath(mToArrowPath, false);
-
-        final float length = TOTAL_PATH_LENGTH*0.21f;
-        float startD = phase - mCurPathLength;
-        if(startD < 0) {
-            startD  = 0;
-        }
-
-        mCurPath.reset();
-        pm.getSegment(phase, phase + mCurPathLength, mCurPath,true);
-
-        if((phase + mCurPathLength) < END_MENU_BAR_VALUE)
-        {
-            if(phase < START_MENU_BAR_VALUE)
-            {
-                pm.getSegment(START_MENU_BAR_VALUE, END_MENU_BAR_VALUE, mCurPath,true);
-            }
-            else
-            {
-                pm.getSegment( phase, END_MENU_BAR_VALUE, mCurPath,true);
-            }
-
-        }
-
-        invalidate();
-    }
-
-    public float getArrowPhase() {
-        return mPhase;
-    }
-
-    public void setMenuPhase(float phase) {
-        mPhase = phase;
-
-        PathMeasure pm = new PathMeasure();
-        pm.setPath(mToMenuPath, false);
-
-        mCurPath.reset();
-        pm.getSegment(phase, phase + mCurPathLength, mCurPath,true);
-
-        if(phase < START_MENU_BAR_VALUE)
-        {
-            pm.getSegment(START_MENU_BAR_VALUE, END_MENU_BAR_VALUE, mCurPath,true);
-        }
-        else if (phase < END_MENU_BAR_VALUE)
-        {
-            pm.getSegment( phase, END_MENU_BAR_VALUE, mCurPath,true);
-        }
-
-        invalidate();
-    }
-
-    public float getMenuPhase() {
-        return mPhase;
-    }
-
-
-    public boolean isArrowStatus() {
-
-        return mIsArrowStatue;
-    }
-
-    public void toggle() {
-
-        changeStatus(!isArrowStatus());
-    }
-
-    public void changeStatus(boolean checked) {
-
-        if(mIsArrowStatue == checked) {
-            return;
-        }
-
-        mIsArrowStatue = checked;
-
-        if (isAttachedToWindow() && isLaidOut()) {
-            animateMenuArrow(checked);
-        } else {
-            // Immediately move the thumb to the new position.
-            initPathStatue(checked);
-        }
-    }
-
-    public void setPathLength(float length) {
-        mCurPathLength = length;
-    }
-
-    public float getPathLength() {
-        return mCurPathLength;
-    }
-
-    private void animateMenuArrow(boolean isArrowStatus)
-    {
-        makeMenuArrowPath();
-
-        AnimatorSet set = new AnimatorSet();
-
-        if(isArrowStatus)
-        {
-            START_MENU_BAR_VALUE = TOTAL_PATH_LENGTH * 0.242f;
-            END_MENU_BAR_VALUE = START_MENU_BAR_VALUE + MENU_OVER_LENGTH;
-
-            final float startD = -(mOffSet*2);
-
-            ObjectAnimator arrowAnimator = ObjectAnimator.ofFloat(this, "arrowPhase", startD, TOTAL_PATH_LENGTH - ARROW_LENGTH -mOffSet);
-            arrowAnimator.setInterpolator(new OvershootInterpolator(TENSION));
-
-            ObjectAnimator pathLengthAnimator = ObjectAnimator.ofFloat(this, "pathLength", MENU_UNDER_LENGTH *2, ARROW_LENGTH);
-
-            set.playTogether(arrowAnimator, pathLengthAnimator);
-            set.setDuration(mAnimationDuration);
-
-        }
-        else
-        {
-            START_MENU_BAR_VALUE = TOTAL_PATH_LENGTH * 0.27f;
-            END_MENU_BAR_VALUE = START_MENU_BAR_VALUE + MENU_OVER_LENGTH;
-
-            PathMeasure measure = new PathMeasure(mToMenuPath, false);
-
-            float startD = measure.getLength() - ARROW_LENGTH;
-
-            float endD = mOffSet;
-
-            ObjectAnimator menuAnimator = ObjectAnimator.ofFloat(this, "menuPhase", startD, endD);
-            menuAnimator.setInterpolator(new OvershootInterpolator(TENSION));
-
-            ObjectAnimator pathLengthAnimator = ObjectAnimator.ofFloat(this, "pathLength", ARROW_LENGTH, MENU_UNDER_LENGTH);
-            pathLengthAnimator.setInterpolator(new DecelerateInterpolator(1.5f));
-
-            set.playTogether(menuAnimator, pathLengthAnimator);
-            set.setDuration(mAnimationDuration);
-        }
-
-        set.addListener(new AnimatorListenerAdapter() {
+        mToArrowAnimator = new AnimatorSet();
+        mToArrowAnimator.playTogether(arrowAnimator, pathLengthAnimator);
+        mToArrowAnimator.setDuration(mAnimationDuration);
+        mToArrowAnimator.addListener(new AnimatorListenerAdapter() {
 
             @Override
             public void onAnimationStart(Animator animation) {
@@ -341,7 +192,126 @@ public class MenuArrowAnimationButton extends AppCompatButton {
                 mIsAnimate = false;
             }
         });
-        set.start();
+    }
+
+    private void initToMenuAnimator() {
+
+        ObjectAnimator menuAnimator = ObjectAnimator.ofFloat(this, "menuPhase", ARROW_START_VALUE, MENU_UNDER_START_VALUE);
+        menuAnimator.setInterpolator(new OvershootInterpolator(TENSION));
+
+        ObjectAnimator pathLengthAnimator = ObjectAnimator.ofFloat(this, "pathLength", ARROW_LENGTH, MENU_UNDER_LENGTH);
+        pathLengthAnimator.setInterpolator(new DecelerateInterpolator(1.5f));
+
+        mToMenuAnimator = new AnimatorSet();
+        mToMenuAnimator.playTogether(menuAnimator, pathLengthAnimator);
+        mToMenuAnimator.setDuration(mAnimationDuration);
+        mToMenuAnimator.addListener(new AnimatorListenerAdapter() {
+
+            @Override
+            public void onAnimationStart(Animator animation) {
+                mIsAnimate = true;
+            }
+
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                mIsAnimate = false;
+            }
+        });
+    }
+
+    public void setArrowPhase(float endPhase) {
+
+        float startD = endPhase-mCurPathLength;
+        float endD = endPhase;
+
+        mCurPath.reset();
+
+        PathMeasure pm = new PathMeasure(mSrcPath, false);
+        pm.getSegment(startD, endD, mCurPath,true);
+
+        if(endD < MENU_OVER_END_VALUE)
+        {
+            if(startD < MENU_OVER_START_VALUE)
+            {
+                pm.getSegment(MENU_OVER_START_VALUE, MENU_OVER_END_VALUE, mCurPath,true);
+            }
+            else
+            {
+                pm.getSegment( endD, MENU_OVER_END_VALUE, mCurPath,true);
+            }
+        }
+
+        invalidate();
+    }
+
+    public void setMenuPhase(float startPhase) {
+
+        float startD = startPhase;
+        float endD = startPhase+mCurPathLength;
+
+        mCurPath.reset();
+
+        PathMeasure pm = new PathMeasure(mSrcPath, false);
+        pm.getSegment(startD, endD, mCurPath,true);
+
+        if(endD < MENU_OVER_START_VALUE)
+        {
+            pm.getSegment(MENU_OVER_START_VALUE, MENU_OVER_END_VALUE, mCurPath,true);
+        }
+        else if (startD < MENU_OVER_END_VALUE)
+        {
+            pm.getSegment( startD, MENU_OVER_END_VALUE, mCurPath,true);
+        }
+
+        invalidate();
+    }
+
+    public void setPathLength(float length) {
+        mCurPathLength = length;
+    }
+
+    public boolean isArrowStatus() {
+
+        return mIsArrowStatue;
+    }
+
+    public void changeStatus(boolean checked) {
+
+        if(mIsArrowStatue == checked) {
+            return;
+        }
+
+        mIsArrowStatue = checked;
+
+        if (isAttachedToWindow() && isLaidOut()) {
+
+            if(checked) {
+                mToArrowAnimator.start();
+            }
+            else {
+                mToMenuAnimator.start();
+            }
+
+        } else {
+            // Immediately move the thumb to the new position.
+            initPathStatue(checked);
+        }
+    }
+
+    public void toggle() {
+
+        changeStatus(!isArrowStatus());
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+
+        Rect newRect = canvas.getClipBounds();
+        newRect.inset(-mCanvasWidth, -mCanvasHeight);  //make the rect larger
+        canvas.clipRect (newRect, Region.Op.REPLACE);
+
+        canvas.drawPath(mCurPath, mPaint);
     }
 
     @Override

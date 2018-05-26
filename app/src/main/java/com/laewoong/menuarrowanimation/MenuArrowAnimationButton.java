@@ -57,6 +57,18 @@ public class MenuArrowAnimationButton extends AppCompatButton {
 
     private static final float TENSION = 1.0f;
 
+    // used in view creation programmatically
+    public MenuArrowAnimationButton(Context context) {
+        super(context);
+
+        init();
+
+        mPaint.setStrokeWidth(10f);
+        mPaint.setColor(0xff43479f);
+        mAnimationDuration = 1500;
+    }
+
+    // used in XML layout file
     public MenuArrowAnimationButton(Context context, AttributeSet attrs) {
         super(context, attrs);
 

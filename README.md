@@ -5,7 +5,7 @@
 Menu/Arrow Animation using Canvas api in android.
 You can see [the original design](https://dribbble.com/shots/2550799-Menu-Arrow-Animation) by Apostol Voicu.
 
-Check the detail in [blog](https://laewoong.github.io/Menu-Arrow-Animation-by-ApostolVoicu/)
+See How to implement this in [my blog](https://laewoong.github.io/Menu-Arrow-Animation-by-ApostolVoicu/)
 
 ## How to use
 
@@ -46,14 +46,27 @@ You can set two attributes: strokeWidth, strokeColor.
 
 ```xml
 <com.laewoong.menuarrowanimation.MenuArrowAnimationButton
-        android:layout_width="80dp"
-        android:layout_height="40dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:strokeWidth="20"
-        app:strokeColor="#d7e4f0"/>
+	android:layout_width="80dp"
+	android:layout_height="40dp"
+	app:layout_constraintBottom_toBottomOf="parent"
+	app:layout_constraintLeft_toLeftOf="parent"
+	app:layout_constraintRight_toRightOf="parent"
+	app:layout_constraintTop_toTopOf="parent"
+	app:strokeWidth="20"
+	app:strokeColor="#d7e4f0"/>
+```
+
+You can check button status using `isArrowStatus()` method.
+
+```xml
+btn = (MenuArrowAnimationButton)findViewById(R.id.btn);
+btn.setOnClickListener(new View.OnClickListener() {
+    @Override
+    public void onClick(View view) {
+
+	Log.i("fff", "OnClicked!!!! : " + btn.isArrowStatus());
+    }
+});
 ```
 
 ## Demo
